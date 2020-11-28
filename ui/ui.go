@@ -14,7 +14,20 @@ type tui struct {
 	nb *notebook.Notebook
 }
 
+func (t *tui) keybindings(g *gotui.Gui) error {
+	return nil
+}
+
+func (t *tui) onResize(g *gotui.Gui, x, y int) error {
+	return nil
+}
+
+func (t *tui) layout(g *gotui.Gui) error {
+	return nil
+}
+
 func (t *tui) Run() {
+	var err error
 	t.g, err = gotui.NewGui(gotui.Output256)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create ui: %v", err)
@@ -35,7 +48,7 @@ func (t *tui) Run() {
 
 }
 
-func New(n *notebook.Notebook) {
+func New(n *notebook.Notebook) *tui {
 	return &tui{
 		nb: n,
 	}

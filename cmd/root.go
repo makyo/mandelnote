@@ -17,7 +17,7 @@ It allows you to take notes - one item per 'card', and then expand cards into
 additional levels of notes. Notes can be shifted into higher or lower levels of
 detail. Projects can be exported to markdown format for use in turning notes
 into a paper or story.`,
-	Args: cobra.MaximumArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 	},
 	Version: "0.0.1",
