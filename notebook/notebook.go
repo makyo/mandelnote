@@ -46,7 +46,7 @@ func (nb *Notebook) AddRevision(text string) {
 }
 
 // AddCard adds a card to the notebook
-func (nb *Notebook) AddCard(title, body string) {
+func (nb *Notebook) AddCard(title, body string, child bool) {
 	c := &Card{
 		title:    title,
 		body:     body,
@@ -60,7 +60,12 @@ func (nb *Notebook) AddCard(title, body string) {
 		nb.cards = []*Card{c}
 		return
 	}
-	if len(nb.currentIndex) == 1 {
+	if child {
+		nb.currentCard.children = append(nb.currentCard.children, c)
+		nb.currentIndex = append(nb.currentIndex, len(nb.currentCard.children)-1)
+		nb.currentCard = nb.traverse(nb.currentIndex)
+		return
+	} else if len(nb.currentIndex) == 1 {
 		after := nb.cards[:nb.currentIndex[0]]
 		nb.cards = append(nb.cards[nb.currentIndex[0]:], &Card{
 			title:    title,
@@ -69,13 +74,24 @@ func (nb *Notebook) AddCard(title, body string) {
 		})
 		nb.cards = append(nb.cards, after...)
 	} else {
-		curr := nb.Traverse(nb.currentIndex[:len(nb.currentIndex)-2])
-		after := curr.children[:nb.currentIndex[len(nb.currentIndex)-1]]
-		curr.children = append(curr.children[nb.currentIndex[len(nb.currentIndex)-1]:], c)
-		curr.children = append(curr.children, after...)
+		curr := nb.traverse(nb.currentIndex[:len(nb.currentIndex)-1])
+		index := nb.currentIndex[len(nb.currentIndex)-1] + 1
+		curr.children = append(
+			curr.children[:index], append(
+				[]*Card{c},
+				curr.children[index:]...)...)
 	}
 	nb.currentIndex[len(nb.currentIndex)-1]++
-	nb.currentCard = nb.Traverse(nb.currentIndex)
+	nb.currentCard = nb.traverse(nb.currentIndex)
+}
+
+func (nb *Notebook) GetCard() (string, string) {
+	return nb.currentCard.title, nb.currentCard.body
+}
+
+func (nb *Notebook) EditCard(title, body string) {
+	nb.currentCard.title = title
+	nb.currentCard.body = body
 }
 
 // Cycle set the current card by moving through the current card stack, looping around on overflow.
@@ -86,10 +102,19 @@ func (nb *Notebook) Cycle(amount int) {
 		}
 		nb.currentIndex = []int{0}
 	}
-	curr := nb.Traverse(nb.currentIndex[:len(nb.currentIndex)-2])
-	amount = amount % len(curr.children)
-	nb.currentIndex[len(nb.currentIndex)-1] += amount
-	nb.currentCard = nb.Traverse(nb.currentIndex)
+	var length int
+	if len(nb.currentIndex) == 1 {
+		length = len(nb.cards)
+	} else {
+		curr := nb.traverse(nb.currentIndex[:len(nb.currentIndex)-1])
+		length = len(curr.children)
+	}
+	newIndex := (nb.currentIndex[len(nb.currentIndex)-1] + amount) % length
+	if newIndex < 0 {
+		newIndex = newIndex * -1
+	}
+	nb.currentIndex[len(nb.currentIndex)-1] = newIndex
+	nb.currentCard = nb.traverse(nb.currentIndex)
 }
 
 // Enter sets the new current card to the first of the children of the previous current card.
@@ -103,12 +128,12 @@ func (nb *Notebook) Enter() {
 // Exit goes back to the old current card.
 func (nb *Notebook) Exit() {
 	if len(nb.currentIndex) > 1 {
-		nb.currentIndex = nb.currentIndex[:len(nb.currentIndex)-2]
-		nb.currentCard = nb.Traverse(nb.currentIndex)
+		nb.currentIndex = nb.currentIndex[:len(nb.currentIndex)-1]
+		nb.currentCard = nb.traverse(nb.currentIndex)
 	}
 }
 
-func (nb *Notebook) Traverse(to []int) *Card {
+func (nb *Notebook) traverse(to []int) *Card {
 	if len(to) == 1 {
 		return nb.cards[to[0]]
 	}
@@ -129,11 +154,14 @@ func (nb *Notebook) Delete(force bool) error {
 		return fmt.Errorf("card still has children, delete requires force")
 	}
 	if len(nb.currentIndex) == 1 {
-		nb.cards = append(nb.cards[:nb.currentIndex[0]], nb.cards[nb.currentIndex[0]+1:]...)
+		nb.cards = append(
+			nb.cards[:nb.currentIndex[0]],
+			nb.cards[nb.currentIndex[0]+1:]...)
 	} else {
-		index := nb.currentIndex[:len(nb.currentIndex)-2]
-		c := nb.Traverse(index)
-		c.children = append(c.children[:index[len(index)-1]], c.children[index[len(index)-1]+1:]...)
+		c := nb.traverse(nb.currentIndex[:len(nb.currentIndex)-1])
+		c.children = append(
+			c.children[:nb.currentIndex[len(nb.currentIndex)-1]],
+			c.children[nb.currentIndex[len(nb.currentIndex)-1]+1:]...)
 	}
 	return nil
 }
@@ -143,16 +171,26 @@ func (nb *Notebook) Promote() error {
 	if len(nb.currentIndex) <= 1 {
 		return fmt.Errorf("unable to promote any further")
 	} else if len(nb.currentIndex) == 2 {
-		cards := append(nb.cards[:nb.currentIndex[0]], nb.currentCard)
-		nb.cards = append(cards, nb.cards[nb.currentIndex[0]:]...)
+		cards := append(
+			nb.cards[:nb.currentIndex[0]+1],
+			nb.currentCard)
+		nb.cards = append(
+			cards,
+			nb.cards[nb.currentIndex[0]+1:]...)
 		nb.Delete(true)
 	} else {
 		index := nb.currentIndex[:len(nb.currentIndex)-2]
-		c := nb.Traverse(nb.currentIndex)
-		children := append(c.children[:index[len(index)-1]], nb.currentCard)
-		c.children = append(children, c.children[index[len(index)-1]:]...)
+		c := nb.traverse(index)
 		nb.Delete(true)
+		children := append(
+			c.children[:nb.currentIndex[len(nb.currentIndex)-1]],
+			nb.currentCard)
+		c.children = append(
+			children,
+			c.children[nb.currentIndex[len(nb.currentIndex)-1]:]...)
 	}
+	nb.currentIndex = nb.currentIndex[:len(nb.currentIndex)-1]
+	nb.currentCard = nb.traverse(nb.currentIndex)
 	return nil
 }
 
@@ -165,13 +203,22 @@ func (nb *Notebook) PromoteAll(replace bool) error {
 	if len(nb.currentIndex) <= 1 {
 		return fmt.Errorf("unable to promote any further")
 	} else if len(nb.currentIndex) == 2 {
-		cards := append(nb.cards[:nb.currentIndex[0]], nb.cards[nb.currentIndex[0]].children...)
-		nb.cards = append(cards, nb.cards[nb.currentIndex[0]+plus:]...)
+		cards := append(
+			nb.cards[:nb.currentIndex[0]+1],
+			nb.currentCard)
+		nb.cards = append(
+			cards,
+			nb.cards[nb.currentIndex[0]+1:]...)
+		nb.Delete(true)
 	} else {
-		index := nb.currentIndex[:len(nb.currentIndex)-2]
-		c := nb.Traverse(nb.currentIndex[:len(nb.currentIndex)-2])
-		children := append(c.children[:index[len(index)-1]], nb.cards[index[len(index)-1]].children...)
-		c.children = append(children, c.children[index[len(index)-1]:]...)
+		index := nb.currentIndex[:len(nb.currentIndex)-1]
+		c := nb.traverse(nb.currentIndex)
+		children := append(
+			c.children[:index[len(index)-1]+1+plus],
+			nb.currentCard)
+		c.children = append(
+			children,
+			c.children[index[len(index)-1]+1+plus:]...)
 		nb.Delete(true)
 	}
 	return nil
