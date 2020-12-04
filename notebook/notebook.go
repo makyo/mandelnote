@@ -13,7 +13,7 @@ type Notebook struct {
 	Revisions    []Revision
 	Created      time.Time
 	Modified     time.Time
-	cards        []*Card
+	root         *Card
 	currentCard  *Card
 	currentIndex []int
 }
@@ -24,9 +24,18 @@ type Revision struct {
 }
 
 type Card struct {
-	title    string
-	body     string
-	children []*Card
+	title      string
+	body       string
+	parent     *Card
+	next       *Card
+	prev       *Card
+	firstChild *Card
+}
+
+type cardContents struct {
+	Title    string
+	Body     string
+	Children []cardContents
 }
 
 // SetMetadata sets the metadata for the notebook.
@@ -48,184 +57,169 @@ func (nb *Notebook) AddRevision(text string) {
 // AddCard adds a card to the notebook
 func (nb *Notebook) AddCard(title, body string, child bool) {
 	c := &Card{
-		title:    title,
-		body:     body,
-		children: []*Card{},
+		title: title,
+		body:  body,
 	}
-	if len(nb.cards) == 0 {
-		nb.cards = []*Card{}
-	}
-	if len(nb.currentIndex) == 0 {
-		nb.currentIndex = []int{0}
-		nb.cards = []*Card{c}
-		return
-	}
-	if child {
-		nb.currentCard.children = append(nb.currentCard.children, c)
-		nb.currentIndex = append(nb.currentIndex, len(nb.currentCard.children)-1)
-		nb.currentCard = nb.traverse(nb.currentIndex)
-		return
-	} else if len(nb.currentIndex) == 1 {
-		after := nb.cards[:nb.currentIndex[0]]
-		nb.cards = append(nb.cards[nb.currentIndex[0]:], &Card{
-			title:    title,
-			body:     body,
-			children: []*Card{},
-		})
-		nb.cards = append(nb.cards, after...)
+	if child || nb.currentCard == nb.root {
+		c.parent = nb.currentCard
+		currChild := nb.currentCard.firstChild
+		if currChild == nil {
+			nb.currentCard.firstChild = c
+		} else {
+			for currChild.next != nil {
+				currChild = currChild.next
+			}
+			currChild.next = c
+			c.prev = currChild
+		}
 	} else {
-		curr := nb.traverse(nb.currentIndex[:len(nb.currentIndex)-1])
-		index := nb.currentIndex[len(nb.currentIndex)-1] + 1
-		curr.children = append(
-			curr.children[:index], append(
-				[]*Card{c},
-				curr.children[index:]...)...)
+		c.parent = nb.currentCard.parent
+		c.next = nb.currentCard.next
+		nb.currentCard.next = c
+		c.prev = nb.currentCard
 	}
-	nb.currentIndex[len(nb.currentIndex)-1]++
-	nb.currentCard = nb.traverse(nb.currentIndex)
+	nb.currentCard = c
 }
 
+// GetCard returns the contents of the current card
 func (nb *Notebook) GetCard() (string, string) {
 	return nb.currentCard.title, nb.currentCard.body
 }
 
+func (c *Card) getTree() []cardContents {
+	result := []cardContents{}
+	currChild := c.firstChild
+	for currChild != nil {
+		result = append(result, cardContents{
+			Title:    currChild.title,
+			Body:     currChild.body,
+			Children: currChild.getTree(),
+		})
+		currChild = currChild.next
+	}
+	return result
+}
+
+// GetTree returns a tree-representation of the contents of all cards
+func (nb *Notebook) GetTree() []cardContents {
+	return nb.root.getTree()
+}
+
+// EditCard changes the contents of the current card.
 func (nb *Notebook) EditCard(title, body string) {
+	if nb.currentCard == nb.root {
+		return
+	}
 	nb.currentCard.title = title
 	nb.currentCard.body = body
 }
 
 // Cycle set the current card by moving through the current card stack, looping around on overflow.
 func (nb *Notebook) Cycle(amount int) {
-	if len(nb.currentIndex) == 0 {
-		if len(nb.cards) == 0 {
-			return
-		}
-		nb.currentIndex = []int{0}
-	}
-	var length int
-	if len(nb.currentIndex) == 1 {
-		length = len(nb.cards)
+	diff := 0
+	if amount > 0 {
+		diff = -1
 	} else {
-		curr := nb.traverse(nb.currentIndex[:len(nb.currentIndex)-1])
-		length = len(curr.children)
+		diff = 1
 	}
-	newIndex := (nb.currentIndex[len(nb.currentIndex)-1] + amount) % length
-	if newIndex < 0 {
-		newIndex = newIndex * -1
+	for amount != 0 {
+		if nb.currentCard.next != nil {
+			nb.currentCard = nb.currentCard.next
+		} else {
+			nb.currentCard = nb.currentCard.parent.firstChild
+		}
+		amount += diff
 	}
-	nb.currentIndex[len(nb.currentIndex)-1] = newIndex
-	nb.currentCard = nb.traverse(nb.currentIndex)
 }
 
 // Enter sets the new current card to the first of the children of the previous current card.
 func (nb *Notebook) Enter() {
-	if len(nb.currentCard.children) != 0 {
-		nb.currentCard = nb.currentCard.children[0]
-		nb.currentIndex = append(nb.currentIndex, 0)
+	if nb.currentCard.firstChild != nil {
+		nb.currentCard = nb.currentCard.firstChild
 	}
 }
 
 // Exit goes back to the old current card.
 func (nb *Notebook) Exit() {
-	if len(nb.currentIndex) > 1 {
-		nb.currentIndex = nb.currentIndex[:len(nb.currentIndex)-1]
-		nb.currentCard = nb.traverse(nb.currentIndex)
+	if nb.currentCard != nb.root && nb.currentCard.parent != nb.root {
+		nb.currentCard = nb.currentCard.parent
 	}
-}
-
-func (nb *Notebook) traverse(to []int) *Card {
-	if len(to) == 1 {
-		return nb.cards[to[0]]
-	}
-	var c *Card
-	for _, i := range to {
-		if c == nil {
-			c = nb.cards[i]
-		} else {
-			c = c.children[i]
-		}
-	}
-	return c
 }
 
 // Delete deletes a card. If it has child and force is not set, it refuses.
 func (nb *Notebook) Delete(force bool) error {
-	if len(nb.currentCard.children) > 0 && !force {
+	if nb.currentCard == nb.root {
+		return fmt.Errorf("nothing to delete")
+	}
+	if nb.currentCard.firstChild != nil && !force {
 		return fmt.Errorf("card still has children, delete requires force")
 	}
-	if len(nb.currentIndex) == 1 {
-		nb.cards = append(
-			nb.cards[:nb.currentIndex[0]],
-			nb.cards[nb.currentIndex[0]+1:]...)
+	if nb.currentCard.prev == nil {
+		nb.currentCard.parent.firstChild = nb.currentCard.next
+		if nb.currentCard.next == nil {
+			nb.currentCard = nb.currentCard.parent
+		} else {
+			nb.currentCard = nb.currentCard.next
+			nb.currentCard.prev = nil
+		}
 	} else {
-		c := nb.traverse(nb.currentIndex[:len(nb.currentIndex)-1])
-		c.children = append(
-			c.children[:nb.currentIndex[len(nb.currentIndex)-1]],
-			c.children[nb.currentIndex[len(nb.currentIndex)-1]+1:]...)
+		nb.currentCard.prev.next = nb.currentCard.next
+		nb.currentCard = nb.currentCard.prev
 	}
 	return nil
 }
 
 // Promote promotes a child card to the level of its parent.
 func (nb *Notebook) Promote() error {
-	if len(nb.currentIndex) <= 1 {
+	if nb.currentCard == nb.root || nb.currentCard.parent == nb.root {
 		return fmt.Errorf("unable to promote any further")
-	} else if len(nb.currentIndex) == 2 {
-		cards := append(
-			nb.cards[:nb.currentIndex[0]+1],
-			nb.currentCard)
-		nb.cards = append(
-			cards,
-			nb.cards[nb.currentIndex[0]+1:]...)
-		nb.Delete(true)
-	} else {
-		index := nb.currentIndex[:len(nb.currentIndex)-2]
-		c := nb.traverse(index)
-		nb.Delete(true)
-		children := append(
-			c.children[:nb.currentIndex[len(nb.currentIndex)-1]],
-			nb.currentCard)
-		c.children = append(
-			children,
-			c.children[nb.currentIndex[len(nb.currentIndex)-1]:]...)
 	}
-	nb.currentIndex = nb.currentIndex[:len(nb.currentIndex)-1]
-	nb.currentCard = nb.traverse(nb.currentIndex)
+	parent := nb.currentCard.parent
+	if nb.currentCard.prev != nil {
+		nb.currentCard.prev.next = nb.currentCard.next
+	}
+	if nb.currentCard == parent.firstChild {
+		parent.firstChild = nb.currentCard.next
+	}
+	nb.currentCard.prev = parent
+	nb.currentCard.parent = parent.parent
+	nb.currentCard.next = parent.next
+	parent.next = nb.currentCard
 	return nil
 }
 
 // PromoteAll promotes all child cards to the level of their parent. If replace is true, the child cards replace the parent.
 func (nb *Notebook) PromoteAll(replace bool) error {
-	plus := 0
-	if replace {
-		plus = 1
-	}
-	if len(nb.currentIndex) <= 1 {
+	if nb.currentCard == nb.root || nb.currentCard.parent == nb.root {
 		return fmt.Errorf("unable to promote any further")
-	} else if len(nb.currentIndex) == 2 {
-		cards := append(
-			nb.cards[:nb.currentIndex[0]+1],
-			nb.currentCard)
-		nb.cards = append(
-			cards,
-			nb.cards[nb.currentIndex[0]+1:]...)
-		nb.Delete(true)
-	} else {
-		index := nb.currentIndex[:len(nb.currentIndex)-1]
-		c := nb.traverse(nb.currentIndex)
-		children := append(
-			c.children[:index[len(index)-1]+1+plus],
-			nb.currentCard)
-		c.children = append(
-			children,
-			c.children[index[len(index)-1]+1+plus:]...)
-		nb.Delete(true)
+	}
+	parent := nb.currentCard.parent
+	first := parent.firstChild
+	first.prev = parent
+	curr := first
+	for {
+		curr.parent = parent.parent
+		if curr.next == nil {
+			curr.next = parent.next
+			break
+		}
+		curr = curr.next
+	}
+	parent.next = first
+	parent.firstChild = nil
+	nb.currentCard = first
+	if replace {
+		first.prev = parent.prev
+		if first.prev != nil {
+			first.prev.next = first
+		}
 	}
 	return nil
 }
 
 // New creates a new notebook
 func New(filename, title, author, description string) *Notebook {
+	root := &Card{}
 	return &Notebook{
 		filename:    filename,
 		Title:       title,
@@ -234,6 +228,7 @@ func New(filename, title, author, description string) *Notebook {
 		Created:     time.Now(),
 		Modified:    time.Now(),
 		Revisions:   []Revision{},
-		cards:       []*Card{},
+		root:        root,
+		currentCard: root,
 	}
 }

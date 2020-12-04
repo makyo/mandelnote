@@ -53,16 +53,28 @@ func TestConfig(t *testing.T) {
 		Convey("It can have cards", func() {
 
 			nb.AddCard("Card 1 Title", "Card 1 body", false)
-			nb.AddCard("Card 2 Title", "Card 2 body", false)
+			title, body := nb.GetCard()
+			So(title, ShouldEqual, "Card 1 Title")
+			So(body, ShouldEqual, "Card 1 body")
+			So(nb.GetTree(), ShouldHaveLength, 1)
 
-			body := nb.MarshalBody()
-			So(body, ShouldEqual, "\n# Card 1 Title\n\nCard 1 body\n\n# Card 2 Title\n\nCard 2 body\n")
+			nb.AddCard("Card 2 Title", "Card 2 body", false)
+			title, body = nb.GetCard()
+			So(title, ShouldEqual, "Card 2 Title")
+			So(body, ShouldEqual, "Card 2 body")
+			So(nb.GetTree(), ShouldHaveLength, 2)
 
 			Convey("And edit them", func() {
 				nb.EditCard("Rose", "Companion")
+				title, body = nb.GetCard()
+				So(title, ShouldEqual, "Rose")
+				So(body, ShouldEqual, "Companion")
 
-				body = nb.MarshalBody()
-				So(body, ShouldEqual, "\n# Card 1 Title\n\nCard 1 body\n\n# Rose\n\nCompanion\n")
+				Convey("Editing the root is a no-op", func() {
+					nb2 := notebook.New("empty.md", "Empty", "Empty", "Empty")
+					nb2.EditCard("bad", "wolf")
+					So(nb2.GetTree(), ShouldHaveLength, 0)
+				})
 			})
 
 			Convey("And delete them", func() {
@@ -71,6 +83,30 @@ func TestConfig(t *testing.T) {
 
 				body = nb.MarshalBody()
 				So(body, ShouldEqual, "\n# Card 1 Title\n\nCard 1 body\n")
+
+				nb.AddCard("bad", "wolf", true)
+				err = nb.Delete(false)
+				So(err, ShouldBeNil)
+
+				body = nb.MarshalBody()
+				So(body, ShouldEqual, "\n# Card 1 Title\n\nCard 1 body\n")
+
+				nb.AddCard("bad", "wolf", true)
+				nb.AddCard("good", "wolf", false)
+				nb.Cycle(-1)
+				err = nb.Delete(false)
+				So(err, ShouldBeNil)
+
+				body = nb.MarshalBody()
+				So(body, ShouldEqual, "\n# Card 1 Title\n\nCard 1 body\n\n## good\n\nwolf\n")
+
+				nb.Exit()
+				err = nb.Delete(false)
+				So(err.Error(), ShouldEqual, "card still has children, delete requires force")
+
+				nb2 := notebook.New("empty.md", "Empty", "Empty", "Empty")
+				err = nb2.Delete(false)
+				So(err.Error(), ShouldEqual, "nothing to delete")
 			})
 
 			Convey("Cards can have children", func() {
@@ -78,6 +114,16 @@ func TestConfig(t *testing.T) {
 
 				body = nb.MarshalBody()
 				So(body, ShouldEqual, "\n# Card 1 Title\n\nCard 1 body\n\n# Card 2 Title\n\nCard 2 body\n\n## Card 2.1 Title\n\nCard 2.1 body\n")
+
+				nb.Exit()
+				nb.AddCard("Card 2.1-a Title", "Card 2.1-a body", true)
+				nb.Exit()
+				nb.AddCard("Card 2.1-b Title", "Card 2.1-b body", true)
+
+				body = nb.MarshalBody()
+				So(body, ShouldEqual, "\n# Card 1 Title\n\nCard 1 body\n\n# Card 2 Title\n\nCard 2 body\n\n## Card 2.1 Title\n\nCard 2.1 body\n\n## Card 2.1-a Title\n\nCard 2.1-a body\n\n## Card 2.1-b Title\n\nCard 2.1-b body\n")
+				nb.Delete(true)
+				nb.Delete(true)
 
 				Convey("One can move between cards", func() {
 					title, body := nb.GetCard()
@@ -120,18 +166,95 @@ func TestConfig(t *testing.T) {
 
 					nb.Cycle(-2)
 					nb.Enter()
+					title, body = nb.GetCard()
+					So(title, ShouldEqual, "Card 2.1 Title")
 					nb.AddCard("Card 2.1.1 Title", "Card 2.1.1 body", true)
 					title, body = nb.GetCard()
 					So(title, ShouldEqual, "Card 2.1.1 Title")
 					body = nb.MarshalBody()
-					So(body, ShouldEqual, "\n### Card 2.1.1 Title")
+					So(body, ShouldContainSubstring, "\n### Card 2.1.1 Title")
 					err = nb.Promote()
 					So(err, ShouldBeNil)
 					body = nb.MarshalBody()
 					So(body, ShouldNotContainSubstring, "\n### Card 2.1.1 Title")
-					So(body, ShouldEqual, "\n## Card 2.1.1 Title")
+					So(body, ShouldContainSubstring, "\n## Card 2.1.1 Title")
+
+					Convey("But not past root level", func() {
+						nb.Exit()
+						title, body = nb.GetCard()
+						So(title, ShouldEqual, "Card 2 Title")
+						err := nb.Promote()
+						So(err.Error(), ShouldEqual, "unable to promote any further")
+						err = nb.PromoteAll(false)
+						So(err.Error(), ShouldEqual, "unable to promote any further")
+
+						nb2 := notebook.New("empty.md", "Empty", "Empty", "Empty")
+						err = nb2.Promote()
+						So(err.Error(), ShouldEqual, "unable to promote any further")
+					})
+
+					Convey("All current level children can be promoted", func() {
+						nb.AddCard("2.1.1.1", "2.1.1.1", true)
+						nb.AddCard("2.1.1.2", "2.1.1.2", false)
+						body = nb.MarshalBody()
+						So(body, ShouldContainSubstring, "\n### 2.1.1.1")
+						So(body, ShouldContainSubstring, "\n### 2.1.1.2")
+						err = nb.PromoteAll(false)
+						So(err, ShouldBeNil)
+						body = nb.MarshalBody()
+						So(body, ShouldNotContainSubstring, "\n### 2.1.1.1")
+						So(body, ShouldNotContainSubstring, "\n### 2.1.1.2")
+						So(body, ShouldContainSubstring, "\n## 2.1.1.1")
+						So(body, ShouldContainSubstring, "\n## 2.1.1.2")
+					})
+
+					Convey("Children can replace their parent", func() {
+						nb.AddCard("2.1.1.1", "2.1.1.1", true)
+						nb.AddCard("2.1.1.2", "2.1.1.2", false)
+						body = nb.MarshalBody()
+						So(body, ShouldContainSubstring, "\n## Card 2.1.1 Title")
+						So(body, ShouldContainSubstring, "\n### 2.1.1.1")
+						So(body, ShouldContainSubstring, "\n### 2.1.1.2")
+						err = nb.PromoteAll(true)
+						So(err, ShouldBeNil)
+						body = nb.MarshalBody()
+						So(body, ShouldNotContainSubstring, "\n## Card 2.1.1 Title")
+						So(body, ShouldNotContainSubstring, "\n### 2.1.1.1")
+						So(body, ShouldNotContainSubstring, "\n### 2.1.1.2")
+						So(body, ShouldContainSubstring, "\n## 2.1.1.1")
+						So(body, ShouldContainSubstring, "\n## 2.1.1.2")
+					})
 				})
 			})
+		})
+
+		Convey("It can be marshalled and unmarshalled", func() {
+			nb.AddRevision("Test revision")
+			nb.AddCard("Test card", "test\n again", false)
+			nb.AddCard("Test 2", "2", false)
+			nb.AddCard("Child", "child", true)
+			nb.Exit()
+			nb.AddCard("Test 3", "3", false)
+			marshalled := nb.Marshal()
+
+			nb2, err := notebook.Unmarshal(string(marshalled))
+			So(nb2, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			marshalled2 := nb2.Marshal()
+			So(string(marshalled2), ShouldEqual, string(marshalled))
+
+			_, err = notebook.Unmarshal("bad-wolf")
+			So(err.Error(), ShouldEqual, "malformed notebook; must contain metadata block and body")
+			_, err = notebook.Unmarshal("---\nbad---\nwolf")
+			So(err.Error(), ShouldContainSubstring, "yaml: unmarshal errors")
+			_, err = notebook.Unmarshal("---\n---\n\nbad-wolf")
+			So(err.Error(), ShouldEqual, "malformed notebook; cannot have body without header")
+			_, err = notebook.Unmarshal("---\n---\n\n#bad-wolf")
+			So(err.Error(), ShouldEqual, "malformed notebook; title must contain depth marker and text")
+			_, err = notebook.Unmarshal("---\n---\n\n## bad-wolf")
+			So(err.Error(), ShouldEqual, "malformed notebook; must start at header depth 1, found ## bad-wolf")
+			_, err = notebook.Unmarshal("---\n---\n\n# bad\n\n### wolf")
+			So(err.Error(), ShouldEqual, "malformed notebook; header depths must increase/decrease by 1")
 		})
 	})
 }
