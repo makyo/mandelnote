@@ -1,4 +1,6 @@
 langugae: go
+go:
+  - 1.14.x
 before_install:
   - "go get -u -v -t ./..."
 script: go test -v ./...
