@@ -1,5 +1,9 @@
 package ui
 
+import (
+	"github.com/makyo/gotui"
+)
+
 // Notes:
 // Vim mode - hit Esc first, then leave off ctrl
 // Tab - moves between title and body of card
@@ -14,3 +18,7 @@ package ui
 // Ctrl-e - Edit metadata
 // Ctrl-s - Save
 // Ctrl-q - Quit
+
+func (t *tui) keybindings(g *gotui.Gui) error {
+	return nil
+}

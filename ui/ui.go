@@ -14,15 +14,20 @@ type tui struct {
 	nb *notebook.Notebook
 }
 
-func (t *tui) keybindings(g *gotui.Gui) error {
-	return nil
-}
-
 func (t *tui) onResize(g *gotui.Gui, x, y int) error {
 	return nil
 }
 
 func (t *tui) layout(g *gotui.Gui) error {
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("tree", 1, 1, maxX/4, maxY-1); err != nil {
+		if err != gotui.ErrUnknownView {
+			return err
+		} else {
+			v.Title = fmt.Sprintf(" %s ", t.nb.Title)
+			fmt.Fprintln(v, "asdf")
+		}
+	}
 	return nil
 }
 
@@ -46,6 +51,10 @@ func (t *tui) Run() {
 		os.Exit(2)
 	}
 
+	if err := t.g.MainLoop(); err != nil && err != gotui.ErrQuit {
+		fmt.Fprintf(os.Stderr, "error running mainloop: %v", err)
+		os.Exit(3)
+	}
 }
 
 func New(n *notebook.Notebook) *tui {
