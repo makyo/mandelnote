@@ -13,8 +13,8 @@ type Notebook struct {
 	Revisions    []Revision
 	Created      time.Time
 	Modified     time.Time
-	root         *Card
-	currentCard  *Card
+	root         *card
+	currentCard  *card
 	currentIndex []int
 }
 
@@ -23,19 +23,20 @@ type Revision struct {
 	Timestamp time.Time
 }
 
-type Card struct {
+type card struct {
 	title      string
 	body       string
-	parent     *Card
-	next       *Card
-	prev       *Card
-	firstChild *Card
+	parent     *card
+	next       *card
+	prev       *card
+	firstChild *card
 }
 
-type cardContents struct {
+type Card struct {
 	Title    string
 	Body     string
-	Children []cardContents
+	Current  bool
+	Children []Card
 }
 
 // SetMetadata sets the metadata for the notebook.
@@ -56,7 +57,7 @@ func (nb *Notebook) AddRevision(text string) {
 
 // AddCard adds a card to the notebook
 func (nb *Notebook) AddCard(title, body string, child bool) {
-	c := &Card{
+	c := &card{
 		title: title,
 		body:  body,
 	}
@@ -86,14 +87,15 @@ func (nb *Notebook) GetCard() (string, string) {
 	return nb.currentCard.title, nb.currentCard.body
 }
 
-func (c *Card) getTree() []cardContents {
-	result := []cardContents{}
+func (c *card) getTree(nb *Notebook) []Card {
+	result := []Card{}
 	currChild := c.firstChild
 	for currChild != nil {
-		result = append(result, cardContents{
+		result = append(result, Card{
 			Title:    currChild.title,
 			Body:     currChild.body,
-			Children: currChild.getTree(),
+			Current:  currChild == nb.currentCard,
+			Children: currChild.getTree(nb),
 		})
 		currChild = currChild.next
 	}
@@ -101,8 +103,8 @@ func (c *Card) getTree() []cardContents {
 }
 
 // GetTree returns a tree-representation of the contents of all cards
-func (nb *Notebook) GetTree() []cardContents {
-	return nb.root.getTree()
+func (nb *Notebook) GetTree() []Card {
+	return nb.root.getTree(nb)
 }
 
 // EditCard changes the contents of the current card.
@@ -219,7 +221,7 @@ func (nb *Notebook) PromoteAll(replace bool) error {
 
 // New creates a new notebook
 func New(filename, title, author, description string) *Notebook {
-	root := &Card{}
+	root := &card{}
 	return &Notebook{
 		filename:    filename,
 		Title:       title,

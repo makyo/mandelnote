@@ -8,7 +8,7 @@ import (
 )
 
 // Marshal generates a Markdown string of a card and all its children, with its title in a header.
-func (c *Card) Marshal(depth int) string {
+func (c *card) Marshal(depth int) string {
 	body := ""
 	curr := c
 	for curr != nil {

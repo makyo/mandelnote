@@ -22,7 +22,12 @@ detail. Projects can be exported to markdown format for use in turning notes
 into a paper or story.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		nb := notebook.New(args[0], "title", "", "")
+		nb := notebook.New(args[0], "title", "author", "")
+		nb.AddCard("asdf", "qwer", false)
+		nb.AddCard("asdf2", "qwer2", true)
+		nb.AddCard("asdf3", "qwer3", false)
+		nb.Exit()
+		nb.AddCard("qwer", "asdf", false)
 		tui := ui.New(nb)
 		tui.Run()
 	},
