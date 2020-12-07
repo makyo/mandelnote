@@ -64,6 +64,57 @@ func TestConfig(t *testing.T) {
 			So(body, ShouldEqual, "Card 2 body")
 			So(nb.GetTree(), ShouldHaveLength, 2)
 
+			Convey("It can merge them", func() {
+
+				nb.AddCard("Test Up", "up", false)
+				nb.AddCard("Up 1", "1", true)
+				nb.Exit()
+				nb.AddCard("Test Down", "down", false)
+				nb.AddCard("Down 1", "1", true)
+				nb.Exit()
+
+				Convey("Up", func() {
+					nb.Merge(-1)
+					title, body = nb.GetCard()
+					So(title, ShouldEqual, "Test Down")
+					So(body, ShouldEqual, "up\n\ndown")
+
+					Convey("Including children", func() {
+						nb.Enter()
+						title, _ = nb.GetCard()
+						So(title, ShouldEqual, "Up 1")
+						nb.Cycle(1)
+						title, _ = nb.GetCard()
+						So(title, ShouldEqual, "Down 1")
+					})
+				})
+
+				Convey("And down", func() {
+					nb.Cycle(-1)
+					nb.Merge(1)
+					title, body = nb.GetCard()
+					So(title, ShouldEqual, "Test Up")
+					So(body, ShouldEqual, "up\n\ndown")
+
+					Convey("Including children", func() {
+						nb.Enter()
+						title, _ = nb.GetCard()
+						So(title, ShouldEqual, "Up 1")
+						nb.Cycle(1)
+						title, _ = nb.GetCard()
+						So(title, ShouldEqual, "Down 1")
+					})
+				})
+
+				Convey("More than one at a time", func() {
+					nb.AddCard("Bottom text", "bottom", false)
+					nb.Merge(-2)
+					title, body = nb.GetCard()
+					So(title, ShouldEqual, "Bottom text")
+					So(body, ShouldEqual, "up\n\ndown\n\nbottom")
+				})
+			})
+
 			Convey("And edit them", func() {
 				nb.EditCard("Rose", "Companion")
 				title, body = nb.GetCard()
@@ -130,25 +181,48 @@ func TestConfig(t *testing.T) {
 					So(title, ShouldEqual, "Card 2.1 Title")
 					So(body, ShouldEqual, "Card 2.1 body")
 
+					Convey("One can enter and exit", func() {
+						nb.Exit()
+						title, body = nb.GetCard()
+						So(title, ShouldEqual, "Card 2 Title")
+						So(body, ShouldEqual, "Card 2 body")
+
+						nb.Enter()
+						title, body = nb.GetCard()
+						So(title, ShouldEqual, "Card 2.1 Title")
+						So(body, ShouldEqual, "Card 2.1 body")
+					})
 					nb.Exit()
-					title, body = nb.GetCard()
-					So(title, ShouldEqual, "Card 2 Title")
-					So(body, ShouldEqual, "Card 2 body")
 
-					nb.Cycle(-1)
-					title, body = nb.GetCard()
-					So(title, ShouldEqual, "Card 1 Title")
-					So(body, ShouldEqual, "Card 1 body")
+					Convey("One can move to siblings", func() {
+						nb.Cycle(-1)
+						title, body = nb.GetCard()
+						So(title, ShouldEqual, "Card 1 Title")
+						So(body, ShouldEqual, "Card 1 body")
 
-					nb.Cycle(1)
-					title, body = nb.GetCard()
-					So(title, ShouldEqual, "Card 2 Title")
-					So(body, ShouldEqual, "Card 2 body")
+						nb.Cycle(1)
+						title, body = nb.GetCard()
+						So(title, ShouldEqual, "Card 2 Title")
+						So(body, ShouldEqual, "Card 2 body")
 
-					nb.Enter()
-					title, body = nb.GetCard()
-					So(title, ShouldEqual, "Card 2.1 Title")
-					So(body, ShouldEqual, "Card 2.1 body")
+						Convey("One moves in a cycle", func() {
+							title, body = nb.GetCard()
+							So(title, ShouldEqual, "Card 2 Title")
+							So(body, ShouldEqual, "Card 2 body")
+							nb.AddCard("Card 3 Title", "Card 3 body", false)
+							title, body = nb.GetCard()
+							So(title, ShouldEqual, "Card 3 Title")
+							So(body, ShouldEqual, "Card 3 body")
+							nb.Cycle(1)
+							title, body = nb.GetCard()
+							So(title, ShouldEqual, "Card 1 Title")
+							So(body, ShouldEqual, "Card 1 body")
+							nb.Cycle(1)
+							title, body = nb.GetCard()
+							So(title, ShouldEqual, "Card 2 Title")
+							So(body, ShouldEqual, "Card 2 body")
+						})
+					})
 				})
 
 				Convey("Children can be promoted", func() {
@@ -164,7 +238,7 @@ func TestConfig(t *testing.T) {
 					So(body, ShouldContainSubstring, "\n# Card 2.3 Title")
 					So(body, ShouldNotContainSubstring, "\n## Card 2.3 Title")
 
-					nb.Cycle(-2)
+					nb.Cycle(-1)
 					nb.Enter()
 					title, body = nb.GetCard()
 					So(title, ShouldEqual, "Card 2.1 Title")

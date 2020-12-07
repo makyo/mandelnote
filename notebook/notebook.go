@@ -125,10 +125,22 @@ func (nb *Notebook) Cycle(amount int) {
 		diff = 1
 	}
 	for amount != 0 {
-		if nb.currentCard.next != nil {
-			nb.currentCard = nb.currentCard.next
+		var to *card
+		if diff == 1 {
+			to = nb.currentCard.prev
 		} else {
-			nb.currentCard = nb.currentCard.parent.firstChild
+			to = nb.currentCard.next
+		}
+		if to != nil {
+			nb.currentCard = to
+		} else {
+			if diff == 1 {
+				for nb.currentCard.next != nil {
+					nb.currentCard = nb.currentCard.next
+				}
+			} else {
+				nb.currentCard = nb.currentCard.parent.firstChild
+			}
 		}
 		amount += diff
 	}
@@ -169,6 +181,59 @@ func (nb *Notebook) Delete(force bool) error {
 		nb.currentCard = nb.currentCard.prev
 	}
 	return nil
+}
+
+// Merge will merge the bodies and children of cards from the number of cards specified into the current card.
+func (nb *Notebook) Merge(amount int) {
+	diff := 0
+	if amount > 0 {
+		diff = -1
+	} else {
+		diff = 1
+	}
+	for amount != 0 {
+		if diff == 1 {
+			prev := nb.currentCard.prev
+			if prev == nil {
+				continue
+			}
+			oldBody := nb.currentCard.body
+			nb.currentCard.body = fmt.Sprintf("%s\n\n%s", prev.body, oldBody)
+			nb.currentCard.prev = prev.prev
+			if nb.currentCard.prev != nil {
+				nb.currentCard.prev.next = nb.currentCard
+			}
+			if prev.firstChild != nil {
+				oldFirst := nb.currentCard.firstChild
+				nb.currentCard.firstChild = prev.firstChild
+				child := nb.currentCard.firstChild
+				for child.next != nil {
+					child = child.next
+				}
+				child.next = oldFirst
+			}
+		} else {
+			next := nb.currentCard.next
+			if next == nil {
+				continue
+			}
+			oldBody := nb.currentCard.body
+			nb.currentCard.body = fmt.Sprintf("%s\n\n%s", oldBody, next.body)
+			nb.currentCard.next = next.next
+			if nb.currentCard.next != nil {
+				nb.currentCard.next.prev = nb.currentCard
+			}
+			if next.firstChild != nil {
+				child := nb.currentCard.firstChild
+				for child.next != nil {
+					child = child.next
+				}
+				child.next = next.firstChild
+				next.firstChild.prev = child
+			}
+		}
+		amount += diff
+	}
 }
 
 // Promote promotes a child card to the level of its parent.

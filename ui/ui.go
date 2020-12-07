@@ -24,14 +24,9 @@ type tui struct {
 	cards         []*card
 	cardNameIndex int
 	currentDepth  int
-}
-
-type card struct {
-	card    notebook.Card
-	view    *gotui.View
-	name    string
-	depth   int
-	current bool
+	currentY      int
+	currentHeight int
+	inputs        map[string]string
 }
 
 func (t *tui) onResize(g *gotui.Gui, x, y int) error {
@@ -62,21 +57,70 @@ func (t *tui) setTitle(g *gotui.Gui) error {
 	return nil
 }
 
+func (t *tui) editMetadata(g *gotui.Gui, v *gotui.View) error {
+	return nil
+}
+
+func (t *tui) save(g *gotui.Gui, v *gotui.View) error {
+	return nil
+}
+
 func (t *tui) quit(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
 	return gotui.ErrQuit
 }
 
 func (t *tui) keybindings(g *gotui.Gui) error {
-	if err := g.SetKeybinding("", gotui.KeyCtrlQ, gotui.ModNone, t.quit); err != nil {
-		return err
-	}
+	// Notebook-wide keybindings
 	if err := g.SetKeybinding("", gotui.KeyCtrlH, gotui.ModNone, t.showHelp); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlM, gotui.ModNone, t.editMetadata); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlS, gotui.ModNone, t.save); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlQ, gotui.ModNone, t.quit); err != nil {
+		return err
+	}
+
+	// Card tasks
+	if err := g.SetKeybinding("", gotui.KeyCtrlN, gotui.ModNone, t.newCard); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlRsqBracket, gotui.ModNone, t.newChild); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyEnter, gotui.ModNone, t.quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlF, gotui.ModNone, t.quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlSpace, gotui.ModNone, t.quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlP, gotui.ModNone, t.quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlLsqBracket, gotui.ModNone, t.quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'u', gotui.ModAlt, t.quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'd', gotui.ModAlt, t.quit); err != nil {
+		return err
+	}
+
+	// Card movement
 	if err := g.SetKeybinding("", gotui.KeyArrowUp, gotui.ModAlt, t.cycleUp); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", gotui.KeyArrowDown, gotui.ModAlt, t.cycleUp); err != nil {
+	if err := g.SetKeybinding("", gotui.KeyArrowDown, gotui.ModAlt, t.cycleDown); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("", gotui.KeyArrowRight, gotui.ModAlt, t.enter); err != nil {
@@ -85,6 +129,8 @@ func (t *tui) keybindings(g *gotui.Gui) error {
 	if err := g.SetKeybinding("", gotui.KeyArrowLeft, gotui.ModAlt, t.exit); err != nil {
 		return err
 	}
+
+	// Modal tasks
 	if err := g.SetKeybinding("modal", gotui.KeyEnter, gotui.ModNone, t.closeModal); err != nil {
 		return err
 	}

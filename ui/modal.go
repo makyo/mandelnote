@@ -21,11 +21,15 @@ var (
 		%s - save
 		%s - quit
 
-		%s - toggle between editing card title and card body
 		%s - new card
 		%s - new child card
+		%s - edit card
+		%s - focus edit
+		%s - toggle between editing card title and card body
 		%s - promote card
 		%s - promote all cards at this level
+		%s - merge card up
+		%s - merge card down
 
 		%s - move to next card
 		%s - move to previous card
@@ -47,15 +51,22 @@ var (
 		ansigo.MaybeApplyWithReset("cyan", "ctrl+M"),
 		ansigo.MaybeApplyWithReset("cyan", "ctrl+S"),
 		ansigo.MaybeApplyWithReset("cyan", "ctrl+Q"),
-		ansigo.MaybeApplyWithReset("cyan", "shift+tab   "),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+N      "),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+shift+N"),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+P      "),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+shift+P"),
+
+		ansigo.MaybeApplyWithReset("cyan", "ctrl+N    "),
+		ansigo.MaybeApplyWithReset("cyan", "ctrl+]    "),
+		ansigo.MaybeApplyWithReset("cyan", "enter     "),
+		ansigo.MaybeApplyWithReset("cyan", "ctrl+F    "),
+		ansigo.MaybeApplyWithReset("cyan", "ctrl+space"),
+		ansigo.MaybeApplyWithReset("cyan", "ctrl+P    "),
+		ansigo.MaybeApplyWithReset("cyan", "ctrl+[    "),
+		ansigo.MaybeApplyWithReset("cyan", "esc,u     "),
+		ansigo.MaybeApplyWithReset("cyan", "esc,d     "),
+
 		ansigo.MaybeApplyWithReset("cyan", "esc,down "),
 		ansigo.MaybeApplyWithReset("cyan", "esc,up   "),
 		ansigo.MaybeApplyWithReset("cyan", "esc,right"),
 		ansigo.MaybeApplyWithReset("cyan", "esc,left "),
+
 		ansigo.MaybeApplyWithReset("underline", "More information"),
 		ansigo.MaybeApplyWithReset("italic+6", "https://mandelnote.projects.makyo.io"),
 		ansigo.MaybeApplyWithReset("italic+6", "https://github.com/makyo/mandelnote"),

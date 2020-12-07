@@ -26,8 +26,10 @@ into a paper or story.`,
 		nb.AddCard("asdf", "qwer", false)
 		nb.AddCard("asdf2", "qwer2", true)
 		nb.AddCard("asdf3", "qwer3", false)
+		nb.AddCard("asdf4", "qwer4", false)
+		nb.AddCard("asdf3", "qwer3", false)
 		nb.Exit()
-		nb.AddCard("qwer", "asdf", false)
+		nb.AddCard("qwer", "asdf\n\n\n\nqwer", false)
 		tui := ui.New(nb)
 		tui.Run()
 	},
