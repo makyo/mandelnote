@@ -20,16 +20,14 @@ It allows you to take notes - one item per 'card', and then expand cards into
 additional levels of notes. Notes can be shifted into higher or lower levels of
 detail. Projects can be exported to markdown format for use in turning notes
 into a paper or story.`,
-	Args: cobra.MaximumNArgs(1),
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		nb := notebook.New(args[0], "title", "author", "")
-		nb.AddCard("asdf", "qwer", false)
-		nb.AddCard("asdf2", "qwer2", true)
-		nb.AddCard("asdf3", "qwer3", false)
-		nb.AddCard("asdf4", "qwer4", false)
-		nb.AddCard("asdf3", "qwer3", false)
-		nb.Exit()
-		nb.AddCard("qwer", "asdf\n\n\n\nqwer", false)
+		nb, err := notebook.Open(args[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error opening notebook: %v", err)
+			os.Exit(1)
+			return
+		}
 		tui := ui.New(nb)
 		tui.Run()
 	},

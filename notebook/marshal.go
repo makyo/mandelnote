@@ -2,6 +2,7 @@ package notebook
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	yaml "gopkg.in/yaml.v2"
@@ -68,23 +69,39 @@ func Unmarshal(contents string) (*Notebook, error) {
 			} else if len(depth) == currDepth+1 {
 				nb.AddCard(title, "", true)
 				currDepth++
-			} else if len(depth) == currDepth-1 {
-				nb.Exit()
+			} else if len(depth) < currDepth {
+				for currDepth != len(depth) {
+					currDepth--
+					nb.Exit()
+				}
 				nb.AddCard(title, "", false)
-				currDepth--
 			} else {
-				return nil, fmt.Errorf("malformed notebook; header depths must increase/decrease by 1")
+				return nil, fmt.Errorf("malformed notebook; header depths must increase by 1")
 			}
 		} else {
 			if !haveValidFirst {
 				return nil, fmt.Errorf("malformed notebook; cannot have body without header")
 			}
 			if len(currBody) > 0 {
-				nb.EditCard(currTitle, strings.TrimSpace(fmt.Sprintf("%s\n%s", currBody, line)))
+				nb.EditCard(currTitle, strings.TrimRight(fmt.Sprintf("%s\n\n%s", currBody, line), "\n"))
 			} else {
 				nb.EditCard(currTitle, line)
 			}
 		}
 	}
+	nb.currentCard = nb.root.firstChild
 	return nb, nil
+}
+
+// Open opens a notebook from a file
+func Open(filename string) (*Notebook, error) {
+	contents, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	nb, err := Unmarshal(string(contents))
+	if nb != nil {
+		nb.filename = filename
+	}
+	return nb, err
 }
