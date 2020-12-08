@@ -197,6 +197,7 @@ func (nb *Notebook) Merge(amount int) {
 
 			// Can't merge up with no previous card.
 			if prev == nil {
+				amount += diff
 				continue
 			}
 
@@ -238,6 +239,7 @@ func (nb *Notebook) Merge(amount int) {
 
 			// Can't merge down with no next card
 			if next == nil {
+				amount += diff
 				continue
 			}
 

@@ -66,12 +66,15 @@ func TestNotebook(t *testing.T) {
 
 			Convey("It can merge them", func() {
 
+				nb = notebook.New("", "Merging", "", "")
 				nb.AddCard("Test Up", "up", false)
 				nb.AddCard("Up 1", "1", true)
 				nb.Exit()
 				nb.AddCard("Test Down", "down", false)
 				nb.AddCard("Down 1", "1", true)
 				nb.Exit()
+				nb.AddCard("Bottom text", "bottom text", false)
+				nb.Cycle(-1)
 
 				Convey("Up", func() {
 					nb.Merge(-1)
@@ -107,11 +110,23 @@ func TestNotebook(t *testing.T) {
 				})
 
 				Convey("More than one at a time", func() {
-					nb.AddCard("Bottom text", "bottom text", false)
+					nb.Cycle(1)
 					nb.Merge(-2)
 					title, body = nb.GetCard()
 					So(title, ShouldEqual, "Test Up")
 					So(body, ShouldEqual, "up\n\ndown\n\nbottom text")
+				})
+
+				Convey("No-ops", func() {
+					nb.Cycle(1)
+					before := nb.GetTree()
+					nb.Merge(1)
+					So(nb.GetTree(), ShouldResemble, before)
+					nb.Cycle(-2)
+					nb.Merge(-1)
+					// Needed for Current to be the same.
+					nb.Cycle(2)
+					So(nb.GetTree(), ShouldResemble, before)
 				})
 			})
 
@@ -221,6 +236,14 @@ func TestNotebook(t *testing.T) {
 							title, body = nb.GetCard()
 							So(title, ShouldEqual, "Card 2 Title")
 							So(body, ShouldEqual, "Card 2 body")
+							nb.Cycle(-1)
+							title, body = nb.GetCard()
+							So(title, ShouldEqual, "Card 1 Title")
+							So(body, ShouldEqual, "Card 1 body")
+							nb.Cycle(-1)
+							title, body = nb.GetCard()
+							So(title, ShouldEqual, "Card 3 Title")
+							So(body, ShouldEqual, "Card 3 body")
 						})
 					})
 				})
@@ -329,6 +352,22 @@ func TestNotebook(t *testing.T) {
 			So(err.Error(), ShouldEqual, "malformed notebook; must start at header depth 1, found ## bad-wolf")
 			_, err = notebook.Unmarshal("---\n---\n\n# bad\n\n### wolf")
 			So(err.Error(), ShouldEqual, "malformed notebook; header depths must increase by 1")
+
+			Convey("It can do so with a file", func() {
+				nb, err := notebook.Open("../README.md")
+				So(err, ShouldBeNil)
+				So(nb, ShouldNotBeNil)
+				title, _ := nb.GetCard()
+				So(title, ShouldEqual, "Mandelnote")
+
+				nb, err = notebook.Open("bad-wolf")
+				So(err, ShouldNotBeNil)
+				So(nb, ShouldBeNil)
+
+				nb, err = notebook.Open("notebook.go")
+				So(err, ShouldNotBeNil)
+				So(nb, ShouldBeNil)
+			})
 		})
 	})
 }
