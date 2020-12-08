@@ -35,3 +35,7 @@ Although it was written before Mandelnote's inception, the file format was used 
 ## Contributors
 
 * [Madison Scott-Clary](https://makyo.is)
+
+### Contributing
+
+Always open to help with the code!

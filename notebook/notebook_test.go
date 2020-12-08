@@ -9,7 +9,7 @@ import (
 	"github.com/makyo/mandelnote/notebook"
 )
 
-func TestConfig(t *testing.T) {
+func TestNotebook(t *testing.T) {
 	Convey("When working with a notebook", t, func() {
 
 		nb := notebook.New(
@@ -76,7 +76,7 @@ func TestConfig(t *testing.T) {
 				Convey("Up", func() {
 					nb.Merge(-1)
 					title, body = nb.GetCard()
-					So(title, ShouldEqual, "Test Down")
+					So(title, ShouldEqual, "Test Up")
 					So(body, ShouldEqual, "up\n\ndown")
 
 					Convey("Including children", func() {
@@ -107,11 +107,11 @@ func TestConfig(t *testing.T) {
 				})
 
 				Convey("More than one at a time", func() {
-					nb.AddCard("Bottom text", "bottom", false)
+					nb.AddCard("Bottom text", "bottom text", false)
 					nb.Merge(-2)
 					title, body = nb.GetCard()
-					So(title, ShouldEqual, "Bottom text")
-					So(body, ShouldEqual, "up\n\ndown\n\nbottom")
+					So(title, ShouldEqual, "Test Up")
+					So(body, ShouldEqual, "up\n\ndown\n\nbottom text")
 				})
 			})
 
@@ -311,11 +311,11 @@ func TestConfig(t *testing.T) {
 			nb.AddCard("Test 3", "3", false)
 			marshalled := nb.Marshal()
 
-			nb2, err := notebook.Unmarshal(string(marshalled))
+			nb2, err := notebook.Unmarshal(marshalled)
 			So(nb2, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			marshalled2 := nb2.Marshal()
-			So(string(marshalled2), ShouldEqual, string(marshalled))
+			So(marshalled2, ShouldEqual, marshalled)
 
 			_, err = notebook.Unmarshal("bad-wolf")
 			So(err.Error(), ShouldEqual, "malformed notebook; must contain metadata block and body")
@@ -328,7 +328,7 @@ func TestConfig(t *testing.T) {
 			_, err = notebook.Unmarshal("---\n---\n\n## bad-wolf")
 			So(err.Error(), ShouldEqual, "malformed notebook; must start at header depth 1, found ## bad-wolf")
 			_, err = notebook.Unmarshal("---\n---\n\n# bad\n\n### wolf")
-			So(err.Error(), ShouldEqual, "malformed notebook; header depths must increase/decrease by 1")
+			So(err.Error(), ShouldEqual, "malformed notebook; header depths must increase by 1")
 		})
 	})
 }

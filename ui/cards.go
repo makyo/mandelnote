@@ -42,6 +42,54 @@ func (t *tui) newChild(g *gotui.Gui, v *gotui.View) error {
 	return nil
 }
 
+func (t *tui) promote(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
+	maxX, _ := g.Size()
+	t.nb.Promote()
+	g.Update(func(gg *gotui.Gui) error {
+		return t.drawCards(gg, maxX)
+	})
+	return nil
+}
+
+func (t *tui) promoteAll(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
+	maxX, _ := g.Size()
+	t.nb.PromoteAll(false)
+	g.Update(func(gg *gotui.Gui) error {
+		return t.drawCards(gg, maxX)
+	})
+	return nil
+}
+
+func (t *tui) mergeDown(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
+	maxX, _ := g.Size()
+	t.nb.Merge(1)
+	g.Update(func(gg *gotui.Gui) error {
+		return t.drawCards(gg, maxX)
+	})
+	return nil
+}
+
+func (t *tui) mergeUp(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
+	maxX, _ := g.Size()
+	t.nb.Merge(-1)
+	g.Update(func(gg *gotui.Gui) error {
+		return t.drawCards(gg, maxX)
+	})
+	return nil
+}
+
 func (t *tui) cycleUp(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
 		return nil
@@ -95,10 +143,9 @@ func (t *tui) drawCard(currentCard notebook.Card, g *gotui.Gui, height, top, lef
 	name := fmt.Sprintf("card-%d", t.cardNameIndex)
 	t.cardNameIndex++
 	x1 := indent
-	y1 := top + 2
+	y1 := top
 	x2 := indent + (t.cardWidth * t.colWidth)
-	y2 := top + 10
-	var rows int
+	y2 := top + t.colWidth/2
 	if v, err := g.SetView(name, x1, y1, x2, y2); err != nil {
 		if err != gotui.ErrUnknownView {
 			return -1, fmt.Errorf("couldn't create card view: %v", err)
@@ -130,30 +177,19 @@ func (t *tui) drawCard(currentCard notebook.Card, g *gotui.Gui, height, top, lef
 		v.Title = fmt.Sprintf(" %s ", c.card.Title)
 		fmt.Fprint(v, c.card.Body)
 
-		rows = len(v.BufferLines())
-		if rows > height/3 {
-			rows = height / 3
-		}
-		if c.current {
-			t.currentHeight = rows
-		}
-		if _, err := g.SetView(name, x1, y1, x2, y1+rows+1); err != nil {
-			return -1, err
-		}
-
 		if _, err := g.SetViewOnBottom(name); err != nil {
 			return -1, err
 		}
 
 		for _, child := range currentCard.Children {
-			newTop, err := t.drawCard(child, g, height, top+rows+2, indent, depth+1)
+			newTop, err := t.drawCard(child, g, height, top+t.colWidth/2+1, indent, depth+1)
 			if err != nil {
 				return -1, err
 			}
-			top = newTop + len(t.cards[len(t.cards)-1].view.ViewBufferLines())
+			top = newTop
 		}
 	}
-	return top + rows, nil
+	return top, nil
 }
 
 func (t *tui) drawCards(g *gotui.Gui, width int) error {
@@ -176,7 +212,7 @@ func (t *tui) drawCards(g *gotui.Gui, width int) error {
 		if err != nil {
 			return err
 		}
-		top = newTop + len(t.cards[len(t.cards)-1].view.ViewBufferLines()) + 2
+		top = newTop + t.colWidth/2 + 1
 	}
 	offset := 0
 	if t.currentY > maxY/2-t.currentHeight-3 {

@@ -194,43 +194,88 @@ func (nb *Notebook) Merge(amount int) {
 	for amount != 0 {
 		if diff == 1 {
 			prev := nb.currentCard.prev
+
+			// Can't merge up with no previous card.
 			if prev == nil {
 				continue
 			}
-			oldBody := nb.currentCard.body
-			nb.currentCard.body = fmt.Sprintf("%s\n\n%s", prev.body, oldBody)
-			nb.currentCard.prev = prev.prev
-			if nb.currentCard.prev != nil {
-				nb.currentCard.prev.next = nb.currentCard
+
+			// Append the body.
+			prev.body = fmt.Sprintf("%s\n\n%s", prev.body, nb.currentCard.body)
+
+			// Manage next/prev.
+			prev.next = nb.currentCard.next
+			if prev.next != nil {
+				prev.next.prev = prev
 			}
-			if prev.firstChild != nil {
-				oldFirst := nb.currentCard.firstChild
-				nb.currentCard.firstChild = prev.firstChild
+
+			// Manage children.
+			if nb.currentCard.firstChild != nil {
+
+				// Set parent for current children.
 				child := nb.currentCard.firstChild
-				for child.next != nil {
+				for child != nil {
+					child.parent = prev
 					child = child.next
 				}
-				child.next = oldFirst
+
+				// Append children
+				if prev.firstChild != nil {
+					oldFirst := nb.currentCard.firstChild
+					child = prev.firstChild
+					for child.next != nil {
+						child = child.next
+					}
+					child.next = oldFirst
+					oldFirst.prev = child
+				} else {
+					prev.firstChild = nb.currentCard.firstChild
+				}
 			}
+			nb.currentCard = prev
 		} else {
 			next := nb.currentCard.next
+
+			// Can't merge down with no next card
 			if next == nil {
 				continue
 			}
-			oldBody := nb.currentCard.body
-			nb.currentCard.body = fmt.Sprintf("%s\n\n%s", oldBody, next.body)
-			nb.currentCard.next = next.next
-			if nb.currentCard.next != nil {
-				nb.currentCard.next.prev = nb.currentCard
+
+			// Prepend body
+			next.body = fmt.Sprintf("%s\n\n%s", nb.currentCard.body, next.body)
+			next.title = nb.currentCard.title
+
+			// Manage next/prev
+			next.prev = nb.currentCard.prev
+			if next.prev != nil {
+				next.prev.next = next
 			}
-			if next.firstChild != nil {
+
+			// Manage children
+			if nb.currentCard.firstChild != nil {
+
+				// Set parent for current children
 				child := nb.currentCard.firstChild
 				for child.next != nil {
+					child.parent = next
 					child = child.next
 				}
+
+				// The above will skip the last child
+				child.parent = next
 				child.next = next.firstChild
-				next.firstChild.prev = child
+
+				if next.firstChild != nil {
+					next.firstChild.prev = child
+				}
+				next.firstChild = nb.currentCard.firstChild
 			}
+
+			// If merging the first child down, set the parent's first child.
+			if nb.currentCard.parent.firstChild == nb.currentCard {
+				nb.currentCard.parent.firstChild = next
+			}
+			nb.currentCard = next
 		}
 		amount += diff
 	}

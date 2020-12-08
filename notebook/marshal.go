@@ -31,9 +31,9 @@ func (nb *Notebook) MarshalBody() string {
 	return nb.root.firstChild.Marshal(1)
 }
 
-func (nb *Notebook) Marshal() []byte {
+func (nb *Notebook) Marshal() string {
 	header, _ := nb.MarshalHeader()
-	return []byte(fmt.Sprintf("---\n%s\n---\n%s", header, nb.MarshalBody()))
+	return fmt.Sprintf("---\n%s\n---\n%s", header, nb.MarshalBody())
 }
 
 func Unmarshal(contents string) (*Notebook, error) {
@@ -55,6 +55,9 @@ func Unmarshal(contents string) (*Notebook, error) {
 			continue
 		}
 		if len(line) > 0 && line[0] == '#' {
+			if nb.currentCard != nil {
+				nb.EditCard(nb.currentCard.title, strings.TrimRight(nb.currentCard.body, "\n"))
+			}
 			lineParts := strings.SplitN(line, " ", 2)
 			if len(lineParts) != 2 {
 				return nil, fmt.Errorf("malformed notebook; title must contain depth marker and text")
@@ -83,11 +86,18 @@ func Unmarshal(contents string) (*Notebook, error) {
 				return nil, fmt.Errorf("malformed notebook; cannot have body without header")
 			}
 			if len(currBody) > 0 {
-				nb.EditCard(currTitle, strings.TrimRight(fmt.Sprintf("%s\n\n%s", currBody, line), "\n"))
+				if len(line) == 0 {
+					nb.EditCard(currTitle, currBody+"\n")
+				} else {
+					nb.EditCard(currTitle, strings.TrimRight(fmt.Sprintf("%s\n%s", currBody, line), "\n"))
+				}
 			} else {
 				nb.EditCard(currTitle, line)
 			}
 		}
+	}
+	if nb.currentCard != nil {
+		nb.EditCard(nb.currentCard.title, strings.TrimRight(nb.currentCard.body, "\n"))
 	}
 	nb.currentCard = nb.root.firstChild
 	return nb, nil
