@@ -183,6 +183,53 @@ func (nb *Notebook) Delete(force bool) error {
 	return nil
 }
 
+// Move will move the current card the number of steps in the given direction. It does not cycle.
+func (nb *Notebook) Move(amount int) {
+	diff := 0
+	if amount > 0 {
+		diff = -1
+	} else {
+		diff = 1
+	}
+	for amount != 0 {
+		amount += diff
+		if diff == 1 {
+			if nb.currentCard.prev == nil {
+				break
+			}
+			nb.currentCard.prev.next = nb.currentCard.next
+			if nb.currentCard.next != nil {
+				nb.currentCard.next.prev = nb.currentCard.prev
+			}
+			nb.currentCard.next = nb.currentCard.prev
+			nb.currentCard.prev = nb.currentCard.prev.prev
+			nb.currentCard.next.prev = nb.currentCard
+			if nb.currentCard.prev != nil {
+				nb.currentCard.prev.next = nb.currentCard
+			} else {
+				nb.currentCard.parent.firstChild = nb.currentCard
+			}
+		} else {
+			if nb.currentCard.next == nil {
+				break
+			}
+			nb.currentCard.next.prev = nb.currentCard.prev
+			if nb.currentCard.prev != nil {
+				nb.currentCard.prev.next = nb.currentCard.next
+			}
+			nb.currentCard.prev = nb.currentCard.next
+			nb.currentCard.next = nb.currentCard.next.next
+			nb.currentCard.prev.next = nb.currentCard
+			if nb.currentCard.next != nil {
+				nb.currentCard.next.prev = nb.currentCard
+			}
+			if nb.currentCard.parent.firstChild == nb.currentCard {
+				nb.currentCard.parent.firstChild = nb.currentCard.prev
+			}
+		}
+	}
+}
+
 // Merge will merge the bodies and children of cards from the number of cards specified into the current card.
 func (nb *Notebook) Merge(amount int) {
 	diff := 0
@@ -192,13 +239,13 @@ func (nb *Notebook) Merge(amount int) {
 		diff = 1
 	}
 	for amount != 0 {
+		amount += diff
 		if diff == 1 {
 			prev := nb.currentCard.prev
 
 			// Can't merge up with no previous card.
 			if prev == nil {
-				amount += diff
-				continue
+				break
 			}
 
 			// Append the body.
@@ -239,8 +286,7 @@ func (nb *Notebook) Merge(amount int) {
 
 			// Can't merge down with no next card
 			if next == nil {
-				amount += diff
-				continue
+				break
 			}
 
 			// Prepend body
@@ -279,7 +325,6 @@ func (nb *Notebook) Merge(amount int) {
 			}
 			nb.currentCard = next
 		}
-		amount += diff
 	}
 }
 
