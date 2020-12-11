@@ -50,7 +50,7 @@ func (t *tui) setTitle(g *gotui.Gui) error {
 		return err
 	} else {
 		title := fmt.Sprintf("   %s ── %s  ", t.nb.Title, t.nb.Author)
-		helpMsg := "  Help: ctrl+H  "
+		helpMsg := "  Hit ? for help  "
 		v.Clear()
 		fmt.Fprintf(v, ansigo.MaybeApplyWithReset("underline+8", fmt.Sprintf("%s%s%s",
 			title,
@@ -119,6 +119,12 @@ func (t *tui) keybindings(g *gotui.Gui) error {
 		return err
 	}
 	if err := g.SetKeybinding("", 'M', gotui.ModNone, t.mergeUp); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'd', gotui.ModNone, t.moveDown); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'u', gotui.ModNone, t.moveUp); err != nil {
 		return err
 	}
 

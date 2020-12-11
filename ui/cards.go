@@ -90,6 +90,30 @@ func (t *tui) mergeUp(g *gotui.Gui, v *gotui.View) error {
 	return nil
 }
 
+func (t *tui) moveDown(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
+	maxX, _ := g.Size()
+	t.nb.Move(1)
+	g.Update(func(gg *gotui.Gui) error {
+		return t.drawCards(gg, maxX)
+	})
+	return nil
+}
+
+func (t *tui) moveUp(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
+	maxX, _ := g.Size()
+	t.nb.Move(-1)
+	g.Update(func(gg *gotui.Gui) error {
+		return t.drawCards(gg, maxX)
+	})
+	return nil
+}
+
 func (t *tui) cycleUp(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
 		return nil
@@ -215,8 +239,8 @@ func (t *tui) drawCards(g *gotui.Gui, width int) error {
 		top = newTop + t.colWidth/2 + 1
 	}
 	offset := 0
-	if t.currentY > maxY/2-t.currentHeight-3 {
-		offset = t.currentY + (t.currentHeight / 2)
+	if t.currentY > maxY-t.currentHeight-3 {
+		offset = t.currentY + (t.currentHeight / 2) - (maxY / 2)
 	}
 	for _, c := range t.cards {
 		if x1, y1, x2, y2, err := g.ViewPosition(c.name); err != nil {
@@ -224,9 +248,9 @@ func (t *tui) drawCards(g *gotui.Gui, width int) error {
 		} else {
 			if v, err := g.SetView(
 				c.name, x1-t.currentDepth*t.colWidth,
-				y1-offset+maxY/2,
+				y1-offset+3,
 				x2-t.currentDepth*t.colWidth,
-				y2-offset+maxY/2); err != nil {
+				y2-offset+3); err != nil {
 				return err
 			} else {
 				c.view = v

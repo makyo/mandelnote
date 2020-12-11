@@ -30,6 +30,8 @@ var (
 		%s - promote all cards at this level
 		%s - merge card up
 		%s - merge card down
+		%s - move card up
+		%s - move card down
 
 		%s - move to next card
 		%s - move to previous card
@@ -48,24 +50,26 @@ var (
 		`,
 		ansigo.MaybeApplyWithReset("bold+underline", "Mandelnote"),
 		ansigo.MaybeApplyWithReset("underline", "Keybindings"),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+M"),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+S"),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+Q"),
+		ansigo.MaybeApplyWithReset("cyan", "e       "),
+		ansigo.MaybeApplyWithReset("cyan", "w/ctrl+S"),
+		ansigo.MaybeApplyWithReset("cyan", "ctrl+Q  "),
 
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+N    "),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+]    "),
+		ansigo.MaybeApplyWithReset("cyan", "n         "),
+		ansigo.MaybeApplyWithReset("cyan", "N         "),
 		ansigo.MaybeApplyWithReset("cyan", "enter     "),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+F    "),
+		ansigo.MaybeApplyWithReset("cyan", "f         "),
 		ansigo.MaybeApplyWithReset("cyan", "ctrl+space"),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+P    "),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+[    "),
-		ansigo.MaybeApplyWithReset("cyan", "esc,u     "),
-		ansigo.MaybeApplyWithReset("cyan", "esc,d     "),
+		ansigo.MaybeApplyWithReset("cyan", "p         "),
+		ansigo.MaybeApplyWithReset("cyan", "P         "),
+		ansigo.MaybeApplyWithReset("cyan", "m         "),
+		ansigo.MaybeApplyWithReset("cyan", "M         "),
+		ansigo.MaybeApplyWithReset("cyan", "u         "),
+		ansigo.MaybeApplyWithReset("cyan", "d         "),
 
-		ansigo.MaybeApplyWithReset("cyan", "esc,down "),
-		ansigo.MaybeApplyWithReset("cyan", "esc,up   "),
-		ansigo.MaybeApplyWithReset("cyan", "esc,right"),
-		ansigo.MaybeApplyWithReset("cyan", "esc,left "),
+		ansigo.MaybeApplyWithReset("cyan", "down "),
+		ansigo.MaybeApplyWithReset("cyan", "up   "),
+		ansigo.MaybeApplyWithReset("cyan", "right"),
+		ansigo.MaybeApplyWithReset("cyan", "left "),
 
 		ansigo.MaybeApplyWithReset("underline", "More information"),
 		ansigo.MaybeApplyWithReset("italic+6", "https://mandelnote.projects.makyo.io"),
