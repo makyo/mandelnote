@@ -21,6 +21,8 @@ type tui struct {
 	colWidth      int
 	cardWidth     int
 	modalOpen     bool
+	editorOpen    bool
+	focusMode     bool
 	cards         []*card
 	cardNameIndex int
 	currentDepth  int
@@ -61,10 +63,29 @@ func (t *tui) setTitle(g *gotui.Gui) error {
 }
 
 func (t *tui) editMetadata(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('e')
+		}
+		return nil
+	}
 	return nil
 }
 
 func (t *tui) save(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('s')
+		}
+		return nil
+	}
+	return nil
+}
+
+func (t *tui) saveAs(g *gotui.Gui, v *gotui.View) error {
+	if t.modalOpen {
+		return nil
+	}
 	return nil
 }
 
@@ -83,10 +104,10 @@ func (t *tui) keybindings(g *gotui.Gui) error {
 	if err := g.SetKeybinding("", 'e', gotui.ModNone, t.editMetadata); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", 'w', gotui.ModNone, t.save); err != nil {
+	if err := g.SetKeybinding("", 's', gotui.ModNone, t.save); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", gotui.KeyCtrlS, gotui.ModNone, t.save); err != nil {
+	if err := g.SetKeybinding("", gotui.KeyCtrlS, gotui.ModNone, t.saveAs); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("", gotui.KeyCtrlQ, gotui.ModNone, t.quit); err != nil {
@@ -100,13 +121,16 @@ func (t *tui) keybindings(g *gotui.Gui) error {
 	if err := g.SetKeybinding("", 'N', gotui.ModNone, t.newChild); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", gotui.KeyEnter, gotui.ModNone, t.quit); err != nil {
+	if err := g.SetKeybinding("", gotui.KeyEnter, gotui.ModNone, t.edit); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", 'f', gotui.ModNone, t.quit); err != nil {
+	if err := g.SetKeybinding("", 'f', gotui.ModNone, t.focus); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", gotui.KeyCtrlSpace, gotui.ModNone, t.quit); err != nil {
+	if err := g.SetKeybinding("", gotui.KeyCtrlSpace, gotui.ModNone, t.toggleEdit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gotui.KeyCtrlW, gotui.ModNone, t.closeEditor); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("", 'p', gotui.ModNone, t.promote); err != nil {
@@ -143,7 +167,7 @@ func (t *tui) keybindings(g *gotui.Gui) error {
 	}
 
 	// Modal tasks
-	if err := g.SetKeybinding("modal", gotui.KeyEnter, gotui.ModNone, t.closeModal); err != nil {
+	if err := g.SetKeybinding("modal", 'q', gotui.ModNone, t.closeModal); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("modal", gotui.KeyArrowUp, gotui.ModNone, t.scrollModalUp); err != nil {
@@ -180,7 +204,7 @@ func (t *tui) Run() {
 	}
 	defer t.g.Close()
 
-	t.g.Cursor = true
+	t.g.Cursor = false
 	t.g.Mouse = true
 
 	t.g.SetManagerFunc(t.layout)

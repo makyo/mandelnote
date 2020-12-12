@@ -20,6 +20,9 @@ type card struct {
 
 func (t *tui) newCard(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('n')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -32,6 +35,9 @@ func (t *tui) newCard(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) newChild(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('N')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -44,6 +50,9 @@ func (t *tui) newChild(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) promote(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('p')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -56,6 +65,9 @@ func (t *tui) promote(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) promoteAll(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('P')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -68,6 +80,9 @@ func (t *tui) promoteAll(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) mergeDown(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('m')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -80,6 +95,9 @@ func (t *tui) mergeDown(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) mergeUp(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('M')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -92,6 +110,9 @@ func (t *tui) mergeUp(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) moveDown(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('d')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -104,6 +125,9 @@ func (t *tui) moveDown(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) moveUp(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().EditWrite('u')
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -116,6 +140,15 @@ func (t *tui) moveUp(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) cycleUp(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().MoveCursor(0, -1, false)
+		} else {
+			m, err := g.View("modal")
+			if err != nil {
+				return err
+			}
+			t.scrollModalUp(g, m)
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -128,6 +161,15 @@ func (t *tui) cycleUp(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) cycleDown(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().MoveCursor(0, 1, false)
+		} else {
+			m, err := g.View("modal")
+			if err != nil {
+				return err
+			}
+			t.scrollModalDown(g, m)
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -140,6 +182,9 @@ func (t *tui) cycleDown(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) enter(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().MoveCursor(1, 0, false)
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -152,6 +197,9 @@ func (t *tui) enter(g *gotui.Gui, v *gotui.View) error {
 
 func (t *tui) exit(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
+		if t.editorOpen {
+			g.CurrentView().MoveCursor(-1, 0, false)
+		}
 		return nil
 	}
 	maxX, _ := g.Size()
@@ -159,6 +207,17 @@ func (t *tui) exit(g *gotui.Gui, v *gotui.View) error {
 	g.Update(func(gg *gotui.Gui) error {
 		return t.drawCards(gg, maxX)
 	})
+	return nil
+}
+
+func (t *tui) clearCards(g *gotui.Gui) error {
+	for _, c := range t.cards {
+		if err := g.DeleteView(c.name); err != nil {
+			return err
+		}
+	}
+	t.cardNameIndex = 0
+	t.cards = []*card{}
 	return nil
 }
 
@@ -190,11 +249,6 @@ func (t *tui) drawCard(currentCard notebook.Card, g *gotui.Gui, height, top, lef
 			v.TitleFgColor = gotui.Attribute(tb.AttrDim | tb.ColorDarkGray)
 			v.FgColor = gotui.Attribute(tb.AttrDim | tb.ColorDarkGray)
 		} else {
-			if !t.modalOpen {
-				if _, err = g.SetCurrentView(name); err != nil {
-					return -1, err
-				}
-			}
 			t.currentDepth = depth
 			t.currentY = top
 		}
@@ -217,13 +271,10 @@ func (t *tui) drawCard(currentCard notebook.Card, g *gotui.Gui, height, top, lef
 }
 
 func (t *tui) drawCards(g *gotui.Gui, width int) error {
-	for _, c := range t.cards {
-		if err := g.DeleteView(c.name); err != nil {
-			return err
-		}
+	if t.focusMode {
+		return nil
 	}
-	t.cardNameIndex = 0
-	t.cards = []*card{}
+	t.clearCards(g)
 	tree := t.nb.GetTree()
 	left := (((columns - t.cardWidth) / 2) * t.colWidth)
 	if (columns-t.cardWidth)%2 == 1 {

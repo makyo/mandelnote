@@ -18,13 +18,14 @@ var (
 		%s
 
 		%s - edit notebook metadata
-		%s - save
+		%s - save/save as...
 		%s - quit
 
 		%s - new card
 		%s - new child card
 		%s - edit card
 		%s - focus edit
+		%s - stop editing
 		%s - toggle between editing card title and card body
 		%s - promote card
 		%s - promote all cards at this level
@@ -51,13 +52,14 @@ var (
 		ansigo.MaybeApplyWithReset("bold+underline", "Mandelnote"),
 		ansigo.MaybeApplyWithReset("underline", "Keybindings"),
 		ansigo.MaybeApplyWithReset("cyan", "e       "),
-		ansigo.MaybeApplyWithReset("cyan", "w/ctrl+S"),
+		ansigo.MaybeApplyWithReset("cyan", "s/ctrl+S"),
 		ansigo.MaybeApplyWithReset("cyan", "ctrl+Q  "),
 
 		ansigo.MaybeApplyWithReset("cyan", "n         "),
 		ansigo.MaybeApplyWithReset("cyan", "N         "),
 		ansigo.MaybeApplyWithReset("cyan", "enter     "),
 		ansigo.MaybeApplyWithReset("cyan", "f         "),
+		ansigo.MaybeApplyWithReset("cyan", "ctlr+W    "),
 		ansigo.MaybeApplyWithReset("cyan", "ctrl+space"),
 		ansigo.MaybeApplyWithReset("cyan", "p         "),
 		ansigo.MaybeApplyWithReset("cyan", "P         "),
@@ -79,6 +81,10 @@ var (
 )
 
 func (t *tui) showHelp(g *gotui.Gui, v *gotui.View) error {
+	if t.editorOpen {
+		g.CurrentView().EditWrite('?')
+		return nil
+	}
 	t.createModal("Help", helpText)
 	return nil
 }
@@ -114,6 +120,7 @@ func (t *tui) closeModal(g *gotui.Gui, v *gotui.View) error {
 	if err := g.DeleteView("modalHelp"); err != nil {
 		return err
 	}
+	g.Cursor = false
 	t.modalOpen = false
 	return nil
 }
@@ -139,9 +146,8 @@ func (t *tui) createModal(title, content string) {
 			if _, err := g.SetViewOnTop("modal"); err != nil {
 				return err
 			}
-			v.SetCursor(0, 0)
 		}
-		modalHelpText := " Scroll: ↑/↓ | Close: <Enter> "
+		modalHelpText := " Scroll: ↑/↓ | Close: Q "
 		if v, err := g.SetView("modalHelp", maxX-3-len(modalHelpText), maxY-5, maxX-6, maxY-3); err != nil {
 			if err != gotui.ErrUnknownView {
 				return err
