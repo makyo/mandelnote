@@ -239,7 +239,7 @@ func (t *tui) drawCards(g *gotui.Gui, width int) error {
 		top = newTop + t.colWidth/2 + 1
 	}
 	offset := 0
-	if t.currentY > maxY-t.currentHeight-3 {
+	if t.currentY > maxY-t.currentHeight-4 {
 		offset = t.currentY + (t.currentHeight / 2) - (maxY / 2)
 	}
 	for _, c := range t.cards {
