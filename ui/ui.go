@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	columns int = 12
+	columns    int = 12
+	confirmMsg     = fmt.Sprintf(" Confirm: %ses/%so ", ansigo.MaybeApplyWithReset("underline", "Y"), ansigo.MaybeApplyWithReset("underline", "N"))
 )
 
 type tui struct {
@@ -29,6 +30,8 @@ type tui struct {
 	currentY      int
 	currentHeight int
 	inputs        map[string]string
+	confirmYesFn  func(*gotui.Gui) error
+	confirmNoFn   func(*gotui.Gui) error
 }
 
 func (t *tui) onResize(g *gotui.Gui, x, y int) error {
@@ -79,7 +82,7 @@ func (t *tui) save(g *gotui.Gui, v *gotui.View) error {
 		}
 		return nil
 	}
-	return nil
+	return t.nb.Save()
 }
 
 func (t *tui) saveAs(g *gotui.Gui, v *gotui.View) error {
@@ -93,7 +96,44 @@ func (t *tui) quit(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
 		return nil
 	}
-	return gotui.ErrQuit
+	if t.nb.Dirty() {
+		maxX, maxY := g.Size()
+		if v, err := g.SetView("confirm", t.colWidth*2, maxY/2-2, maxX-t.colWidth*2, maxY/2+2); err != nil {
+			if err != gotui.ErrUnknownView {
+				return err
+			}
+			t.modalOpen = true
+			v.Frame = true
+			v.FrameFgColor = gotui.ColorCyan | gotui.AttrBold
+			v.TitleFgColor = gotui.AttrBold
+			v.Title = " Quit "
+			v.Wrap = true
+			v.WordWrap = true
+			fmt.Fprint(v, "You have unsaved changes. Would you like to save before quitting?")
+			g.SetCurrentView("confirm")
+		}
+		if v, err := g.SetView("confirmActions", maxX-t.colWidth*2-20, maxY/2+1, maxX-t.colWidth*2-2, maxY/2+3); err != nil {
+			if err != gotui.ErrUnknownView {
+				return err
+			}
+			v.Frame = false
+			fmt.Fprintf(v, confirmMsg)
+		}
+		g.SetCurrentView("confirm")
+		t.confirmYesFn = func(gg *gotui.Gui) error {
+			err := t.nb.Save()
+			if err != nil {
+				return err
+			}
+			return gotui.ErrQuit
+		}
+		t.confirmNoFn = func(gg *gotui.Gui) error {
+			return gotui.ErrQuit
+		}
+		return nil
+	} else {
+		return gotui.ErrQuit
+	}
 }
 
 func (t *tui) keybindings(g *gotui.Gui) error {
@@ -127,7 +167,7 @@ func (t *tui) keybindings(g *gotui.Gui) error {
 	if err := g.SetKeybinding("", 'f', gotui.ModNone, t.focus); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", gotui.KeyCtrlSpace, gotui.ModNone, t.toggleEdit); err != nil {
+	if err := g.SetKeybinding("", gotui.KeyTab, gotui.ModNone, t.toggleEdit); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("", gotui.KeyCtrlW, gotui.ModNone, t.closeEditor); err != nil {
@@ -174,6 +214,14 @@ func (t *tui) keybindings(g *gotui.Gui) error {
 		return err
 	}
 	if err := g.SetKeybinding("modal", gotui.KeyArrowDown, gotui.ModNone, t.scrollModalDown); err != nil {
+		return err
+	}
+
+	// Confirm tasks
+	if err := g.SetKeybinding("confirm", 'y', gotui.ModNone, t.confirmYes); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("confirm", 'n', gotui.ModNone, t.confirmNo); err != nil {
 		return err
 	}
 	return nil

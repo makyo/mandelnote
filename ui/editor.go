@@ -11,7 +11,10 @@ import (
 func (t *tui) edit(g *gotui.Gui, v *gotui.View) error {
 	if t.modalOpen {
 		if t.editorOpen {
-			g.CurrentView().EditNewLine()
+			cv := g.CurrentView()
+			if cv.Name() == "editor" {
+				g.CurrentView().EditNewLine()
+			}
 		}
 		return nil
 	}

@@ -103,15 +103,34 @@ func Unmarshal(contents string) (*Notebook, error) {
 	return nb, nil
 }
 
+// SetFile changes the file to which the notebook is saved.
+func (nb *Notebook) SetFile(filename string) {
+	nb.filename = filename
+}
+
+// Save saves the notebook's contents to disk.
+func (nb *Notebook) Save() error {
+	err := ioutil.WriteFile(nb.filename, []byte(nb.Marshal()), 0644)
+	if err != nil {
+		return err
+	}
+	nb.dirty = false
+	return nil
+}
+
 // Open opens a notebook from a file
 func Open(filename string) (*Notebook, error) {
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
+		if err.Error() == fmt.Sprintf("open %s: no such file or directory", filename) {
+			return New(filename, "New notebook", "", ""), nil
+		}
 		return nil, err
 	}
 	nb, err := Unmarshal(string(contents))
 	if nb != nil {
 		nb.filename = filename
+		nb.dirty = false
 	}
 	return nb, err
 }

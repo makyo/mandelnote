@@ -55,18 +55,18 @@ var (
 		ansigo.MaybeApplyWithReset("cyan", "s/ctrl+S"),
 		ansigo.MaybeApplyWithReset("cyan", "ctrl+Q  "),
 
-		ansigo.MaybeApplyWithReset("cyan", "n         "),
-		ansigo.MaybeApplyWithReset("cyan", "N         "),
-		ansigo.MaybeApplyWithReset("cyan", "enter     "),
-		ansigo.MaybeApplyWithReset("cyan", "f         "),
-		ansigo.MaybeApplyWithReset("cyan", "ctlr+W    "),
-		ansigo.MaybeApplyWithReset("cyan", "ctrl+space"),
-		ansigo.MaybeApplyWithReset("cyan", "p         "),
-		ansigo.MaybeApplyWithReset("cyan", "P         "),
-		ansigo.MaybeApplyWithReset("cyan", "m         "),
-		ansigo.MaybeApplyWithReset("cyan", "M         "),
-		ansigo.MaybeApplyWithReset("cyan", "u         "),
-		ansigo.MaybeApplyWithReset("cyan", "d         "),
+		ansigo.MaybeApplyWithReset("cyan", "n      "),
+		ansigo.MaybeApplyWithReset("cyan", "N      "),
+		ansigo.MaybeApplyWithReset("cyan", "enter  "),
+		ansigo.MaybeApplyWithReset("cyan", "f      "),
+		ansigo.MaybeApplyWithReset("cyan", "ctlr+W "),
+		ansigo.MaybeApplyWithReset("cyan", "tab    "),
+		ansigo.MaybeApplyWithReset("cyan", "p      "),
+		ansigo.MaybeApplyWithReset("cyan", "P      "),
+		ansigo.MaybeApplyWithReset("cyan", "m      "),
+		ansigo.MaybeApplyWithReset("cyan", "M      "),
+		ansigo.MaybeApplyWithReset("cyan", "u      "),
+		ansigo.MaybeApplyWithReset("cyan", "d      "),
 
 		ansigo.MaybeApplyWithReset("cyan", "down "),
 		ansigo.MaybeApplyWithReset("cyan", "up   "),
@@ -160,4 +160,44 @@ func (t *tui) createModal(title, content string) {
 		}
 		return nil
 	})
+}
+
+func confirmNoop(g *gotui.Gui) error {
+	return nil
+}
+
+func (t *tui) confirmYes(g *gotui.Gui, v *gotui.View) error {
+	if t.editorOpen {
+		g.CurrentView().EditWrite('y')
+	}
+	if err := g.DeleteView("confirm"); err != nil {
+		return err
+	}
+	if err := g.DeleteView("confirmActions"); err != nil {
+		return err
+	}
+	if err := t.confirmYesFn(g); err != nil {
+		return err
+	}
+	t.confirmYesFn = confirmNoop
+	t.confirmNoFn = confirmNoop
+	return nil
+}
+
+func (t *tui) confirmNo(g *gotui.Gui, v *gotui.View) error {
+	if t.editorOpen {
+		g.CurrentView().EditWrite('n')
+	}
+	if err := g.DeleteView("confirm"); err != nil {
+		return err
+	}
+	if err := g.DeleteView("confirmActions"); err != nil {
+		return err
+	}
+	if err := t.confirmNoFn(g); err != nil {
+		return err
+	}
+	t.confirmYesFn = confirmNoop
+	t.confirmNoFn = confirmNoop
+	return nil
 }

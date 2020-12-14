@@ -1,6 +1,8 @@
 package notebook_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -57,6 +59,10 @@ func TestNotebook(t *testing.T) {
 			So(title, ShouldEqual, "Card 1 Title")
 			So(body, ShouldEqual, "Card 1 body")
 			So(nb.GetTree(), ShouldHaveLength, 1)
+
+			Convey("Adding cards makes the notebook dirty", func() {
+				So(nb.Dirty(), ShouldBeTrue)
+			})
 
 			nb.AddCard("Card 2 Title", "Card 2 body", false)
 			title, body = nb.GetCard()
@@ -436,13 +442,35 @@ func TestNotebook(t *testing.T) {
 				title, _ := nb.GetCard()
 				So(title, ShouldEqual, "Mandelnote")
 
-				nb, err = notebook.Open("bad-wolf")
-				So(err, ShouldNotBeNil)
-				So(nb, ShouldBeNil)
+				Convey("Including a new file", func() {
+					nb, err = notebook.Open("new-notebook.md")
+					So(err, ShouldBeNil)
+					So(nb, ShouldNotBeNil)
+					So(nb.Title, ShouldEqual, "New notebook")
+					f, _ := ioutil.TempFile("", "notebook.md")
+					defer os.Remove(f.Name())
+					nb.SetFile(f.Name())
+					nb.Save()
+					nb, err := notebook.Open(f.Name())
+					So(err, ShouldBeNil)
+					So(nb, ShouldNotBeNil)
+					So(nb.Title, ShouldEqual, "New notebook")
+				})
 
-				nb, err = notebook.Open("notebook.go")
-				So(err, ShouldNotBeNil)
-				So(nb, ShouldBeNil)
+				Convey("But not a bad file", func() {
+					nb, err = notebook.Open("..")
+					So(err, ShouldNotBeNil)
+					So(nb, ShouldBeNil)
+					nb = notebook.New("..", "bad-wolf", "", "")
+					err := nb.Save()
+					So(err, ShouldNotBeNil)
+				})
+
+				Convey("Or an invalid file", func() {
+					nb, err = notebook.Open("notebook.go")
+					So(err, ShouldNotBeNil)
+					So(nb, ShouldBeNil)
+				})
 			})
 		})
 	})

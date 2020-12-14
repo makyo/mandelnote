@@ -16,6 +16,7 @@ type Notebook struct {
 	root         *card
 	currentCard  *card
 	currentIndex []int
+	dirty        bool
 }
 
 type Revision struct {
@@ -44,6 +45,7 @@ func (nb *Notebook) SetMetadata(title, author, description string) {
 	nb.Title = title
 	nb.Author = author
 	nb.Description = description
+	nb.dirty = true
 }
 
 // AddRevision adds a timestamped revision message to the notebook.
@@ -53,6 +55,7 @@ func (nb *Notebook) AddRevision(text string) {
 		Timestamp: time.Now(),
 	}}, nb.Revisions...)
 	nb.Modified = time.Now()
+	nb.dirty = true
 }
 
 // AddCard adds a card to the notebook
@@ -80,6 +83,7 @@ func (nb *Notebook) AddCard(title, body string, child bool) {
 		c.prev = nb.currentCard
 	}
 	nb.currentCard = c
+	nb.dirty = true
 }
 
 // GetCard returns the contents of the current card
@@ -114,6 +118,7 @@ func (nb *Notebook) EditCard(title, body string) {
 	}
 	nb.currentCard.title = title
 	nb.currentCard.body = body
+	nb.dirty = true
 }
 
 // Cycle set the current card by moving through the current card stack, looping around on overflow.
@@ -180,6 +185,7 @@ func (nb *Notebook) Delete(force bool) error {
 		nb.currentCard.prev.next = nb.currentCard.next
 		nb.currentCard = nb.currentCard.prev
 	}
+	nb.dirty = true
 	return nil
 }
 
@@ -228,6 +234,7 @@ func (nb *Notebook) Move(amount int) {
 			}
 		}
 	}
+	nb.dirty = true
 }
 
 // Merge will merge the bodies and children of cards from the number of cards specified into the current card.
@@ -326,6 +333,7 @@ func (nb *Notebook) Merge(amount int) {
 			nb.currentCard = next
 		}
 	}
+	nb.dirty = true
 }
 
 // Promote promotes a child card to the level of its parent.
@@ -344,6 +352,7 @@ func (nb *Notebook) Promote() error {
 	nb.currentCard.parent = parent.parent
 	nb.currentCard.next = parent.next
 	parent.next = nb.currentCard
+	nb.dirty = true
 	return nil
 }
 
@@ -373,7 +382,13 @@ func (nb *Notebook) PromoteAll(replace bool) error {
 			first.prev.next = first
 		}
 	}
+	nb.dirty = true
 	return nil
+}
+
+// Dirty returns whether or not the notebook has changes that have not been saved.
+func (nb *Notebook) Dirty() bool {
+	return nb.dirty
 }
 
 // New creates a new notebook
